@@ -1,0 +1,30 @@
+# Bytecode and caches
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# Environment variables
+.env
+
+# Data and generated files
+data/*.db
+uploads/**
+reports/*.txt
+reports/index_cache/**
+models/**
+checkpoints/**
+logs/**
+datasets/**/*
+!datasets/.gitkeep
+
+# OS generated
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+

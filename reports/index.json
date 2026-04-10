@@ -1,0 +1,62 @@
+[
+  {
+    "path": "report_20260410_150212.txt",
+    "timestamp": "20260410_150212",
+    "score": 26.45,
+    "owner": "student1"
+  },
+  {
+    "path": "report_20260410_145957.txt",
+    "timestamp": "20260410_145957",
+    "score": 26.92,
+    "owner": "student1"
+  },
+  {
+    "path": "report_20260410_145903.txt",
+    "timestamp": "20260410_145903",
+    "score": 26.92,
+    "owner": "anonymous"
+  },
+  {
+    "path": "report_20260317_143755.txt",
+    "timestamp": "20260317_143755",
+    "score": 19.26,
+    "owner": "student1"
+  },
+  {
+    "path": "report_20260317_141619.txt",
+    "timestamp": "20260317_141619",
+    "score": 19.26,
+    "owner": "student1"
+  },
+  {
+    "path": "report_20260315_170213.txt",
+    "timestamp": "20260315_170213",
+    "score": 19.26,
+    "owner": "student1"
+  },
+  {
+    "path": "report_20260315_165150.txt",
+    "timestamp": "20260315_165150",
+    "score": 19.26,
+    "owner": "student1"
+  },
+  {
+    "path": "report_20260315_164659.txt",
+    "timestamp": "20260315_164659",
+    "score": 19.26
+  },
+  {
+    "path": "report_20260311_222149.txt",
+    "timestamp": "20260311_222149",
+    "owner": "student1",
+    "score": 19.26,
+    "ai_score": 50.0
+  },
+  {
+    "path": "report_20260315_164659.txt",
+    "owner": "student1",
+    "score": 19.26,
+    "timestamp": "20260315_164659"
+  }
+]

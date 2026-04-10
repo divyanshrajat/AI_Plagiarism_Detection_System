@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Results - PlagX</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-blue: #1e40af;
+            --sky-blue: #3b82f6;
+            --light-blue: #60a5fa;
+            --cyan: #06b6d4;
+            --cyan-light: #22d3ee;
+            --dark-bg: #0f172a;
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-gradient: linear-gradient(135deg, #3b82f6, #06b6d4);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #164e63 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            padding: 20px;
+        }
+
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .orb-1 {
+            width: 500px;
+            height: 500px;
+            background: linear-gradient(45deg, #3b82f6, #06b6d4);
+            top: -150px;
+            left: -100px;
+            opacity: 0.4;
+        }
+
+        .orb-2 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(45deg, #8b5cf6, #3b82f6);
+            bottom: -100px;
+            right: -50px;
+            opacity: 0.3;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, -30px) scale(1.1); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-gradient);
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: 800;
+            font-size: 20px;
+        }
+
+        .brand-name {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(to right, #fff, #67e8f9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .back-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .result-card {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            padding: 48px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
+            animation: fadeInUp 0.6s ease-out 0.1s backwards;
+        }
+
+        .result-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .result-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            margin: 0 auto 20px;
+        }
+
+        .result-icon.success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 8px 32px rgba(16, 185, 129, 0.4);
+        }
+
+        .result-icon.warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            box-shadow: 0 8px 32px rgba(245, 158, 11, 0.4);
+        }
+
+        .result-icon.danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            box-shadow: 0 8px 32px rgba(239, 68, 68, 0.4);
+        }
+
+        .result-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .filename {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        /* Score Section */
+        .score-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 36px;
+        }
+
+        .score-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 28px;
+            text-align: center;
+        }
+
+        .score-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .score-value {
+            font-size: 56px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .score-value.plagiarism {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .score-value.ai {
+            background: linear-gradient(135deg, #8b5cf6, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .score-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin-top: 16px;
+            overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s ease-out;
+        }
+
+        .score-bar-fill.plagiarism {
+            background: var(--accent-gradient);
+        }
+
+        .score-bar-fill.ai {
+            background: linear-gradient(135deg, #8b5cf6, #a855f7);
+        }
+
+        /* Labels */
+        .label-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+
+        .label-badge.low {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .label-badge.medium {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .label-badge.high {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        /* Matches */
+        .matches-section {
+            margin-top: 36px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .match-item {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .match-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .match-source {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .match-score {
+            font-weight: 700;
+            font-size: 18px;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .match-score.high {
+            color: #f87171;
+        }
+
+        .match-score.medium {
+            color: #fbbf24;
+        }
+
+        .match-score.low {
+            color: #34d399;
+        }
+
+        /* Report Text */
+        .report-section {
+            margin-top: 36px;
+        }
+
+        .report-text {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 14px;
+            padding: 24px;
+            font-size: 14px;
+            line-height: 1.8;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Actions */
+        .actions {
+            display: flex;
+            gap: 16px;
+            margin-top: 36px;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            flex: 1;
+            min-width: 200px;
+            padding: 16px 28px;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 15px;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: white;
+            border: none;
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* No matches */
+        .no-matches {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .no-matches-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .result-card {
+                padding: 32px 24px;
+            }
+
+            .score-value {
+                font-size: 42px;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .btn-action {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+    </div>
+    
+    <div class="container">
+        <header class="header">
+            <div class="logo-section">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="PlagX Logo" class="logo-icon">
+                <span class="brand-name">PlagX</span>
+            </div>
+            <a href="{{ url_for('index') }}" class="back-btn">← Back to Home</a>
+        </header>
+        
+        <div class="result-card">
+            <div class="result-header">
+                <div class="result-icon {% if plagiarism_score < 30 %}success{% elif plagiarism_score < 70 %}warning{% else %}danger{% endif %}">
+                    {% if plagiarism_score < 30 %}✓{% elif plagiarism_score < 70 %}⚠{% else %}✗{% endif %}
+                </div>
+                <h1 class="result-title">Analysis Complete</h1>
+                <p class="filename">{{ filename }}</p>
+            </div>
+            
+            <div class="score-section">
+                <div class="score-card">
+                    <div class="score-label">Plagiarism Score</div>
+                    <div class="score-value plagiarism">{{ plagiarism_score }}%</div>
+                    <div class="score-bar">
+                        <div class="score-bar-fill plagiarism" style="width: {{ plagiarism_score }}%"></div>
+                    </div>
+                    {% if plagiarism_score < 30 %}
+                        <span class="label-badge low">Low Similarity</span>
+                    {% elif plagiarism_score < 70 %}
+                        <span class="label-badge medium">Moderate Similarity</span>
+                    {% else %}
+                        <span class="label-badge high">High Similarity</span>
+                    {% endif %}
+                </div>
+                
+                <div class="score-card">
+                    <div class="score-label">AI Content Detection</div>
+                    <div class="score-value ai">{{ ai_indicator.probability }}%</div>
+                    <div class="score-bar">
+                        <div class="score-bar-fill ai" style="width: {{ ai_indicator.probability }}%"></div>
+                    </div>
+                    <span class="label-badge {% if ai_indicator.probability < 40 %}low{% elif ai_indicator.probability < 70 %}medium{% else %}high{% endif %}">
+                        {{ ai_indicator.label }}
+                    </span>
+                </div>
+            </div>
+            
+            {% if top_matches %}
+            <div class="matches-section">
+                <h2 class="section-title">Top Similarity Matches</h2>
+                {% for match in top_matches %}
+                <div class="match-item">
+                    <span class="match-source">{{ match.source }}</span>
+                    <span class="match-score {% if match.score < 30 %}low{% elif match.score < 70 %}medium{% else %}high{% endif %}">
+                        {{ match.score }}%
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            {% if report_text %}
+            <div class="report-section">
+                <h2 class="section-title">Detailed Report</h2>
+                <div class="report-text">{{ report_text }}</div>
+            </div>
+            {% endif %}
+            
+            <div class="actions">
+                <a href="{{ url_for('index') }}" class="btn-action btn-primary">Analyze Another Document</a>
+                {% if pdf_available %}
+                <a href="{{ url_for('download_report', filename=pdf_available) }}" class="btn-action btn-secondary">Download PDF Report</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <footer class="footer" style="text-align: center; padding: 20px; color: var(--text-secondary); font-size: 12px; border-top: 1px solid var(--glass-border); margin-top: 40px;">
+        <p>Developed by: DIVYANSH RAJAT</p>
+    </footer>
+</body>
+</html>
