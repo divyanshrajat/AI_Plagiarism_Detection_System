@@ -1,0 +1,13 @@
+# Git LFS for large model and dataset files
+# Model files
+*.safetensors filter=lfs diff=lfs merge=lfs -text
+models/**/* filter=lfs diff=lfs merge=lfs -text
+# Large dataset files (PAN corpus texts mostly <1MB each, but many)
+datasets/benchmark_dataset/**/*.txt filter=lfs diff=lfs merge=lfs -text
+datasets/benchmark_dataset/**/*.xml filter=lfs diff=lfs merge=lfs -text
+# Other potential large files
+*.bin filter=lfs diff=lfs merge=lfs -text
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.pkl filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
+*.pth filter=lfs diff=lfs merge=lfs -text

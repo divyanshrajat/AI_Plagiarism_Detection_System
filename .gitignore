@@ -14,11 +14,9 @@ data/*.db
 uploads/**
 reports/*.txt
 reports/index_cache/**
-models/**
-checkpoints/**
-logs/**
-datasets/**/*
-!datasets/.gitkeep
+
+
+
 
 # OS generated
 .DS_Store
