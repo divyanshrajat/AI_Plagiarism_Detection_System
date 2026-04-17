@@ -118,7 +118,7 @@ _upload_handler = _safe_import("modules.upload_handler")
 _text_extractor = _safe_import("modules.text_extractor")
 _text_preprocessor = _safe_import("modules.text_preprocessor")
 _similarity_module = _safe_import("modules.semantic_similarity")
-_ai_detector_module = _safe_import("modules.ai_text_detector_improved")
+_ai_detector_module = _safe_import("modules.ai_text_detector")
 _report_module = _safe_import("modules.report_generator")
 
 allowed_file = (

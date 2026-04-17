@@ -3,117 +3,151 @@ import torch
 import logging
 from typing import Dict, Any, List
 from transformers import pipeline, AutoTokenizer, GPT2LMHeadModel
-from transformers import TextClassificationPipeline
-from torch.nn.functional import softmax
 
 logger = logging.getLogger(__name__)
 
-# Superior ensemble: proven high-acc models + perplexity
+# Standard AI detection models
 MODELS = [
-    "openai-community/roberta-base-openai-detector",  # 84% acc
-    "Hello-SimpleAI/chatgpt-detector-roberta",  # Backup
-    "rohitg00/roberta-chatgpt-detector-finetuned"  # Additional
+    "openai-community/roberta-base-openai-detector",  # 0: Fake, 1: Real
+    "Hello-SimpleAI/chatgpt-detector-roberta",       # 0: Human, 1: ChatGPT
 ]
 
-# Weights based on reported acc
-MODEL_WEIGHTS = [0.5, 0.3, 0.2]
-
-# GPT2 for perplexity (AI text has lower perplexity)
-PERPLEX_MODEL = "gpt2-medium"
-PERPLEX_WEIGHT = 0.1
-PERPLEX_THRESHOLD = 20.0  # Lower = more AI-like
+PERPLEX_MODEL = "gpt2" 
 
 _pipelines = {}
 _perplex_tokenizer = None
 _perplex_model = None
 
 def load_perplexity_model():
-    """Load GPT2 for perplexity once."""
     global _perplex_tokenizer, _perplex_model
     if _perplex_model is None:
-        _perplex_tokenizer = AutoTokenizer.from_pretrained(PERPLEX_MODEL)
-        _perplex_tokenizer.pad_token = _perplex_tokenizer.eos_token
-        _perplex_model = GPT2LMHeadModel.from_pretrained(PERPLEX_MODEL)
-        _perplex_model.eval()
+        try:
+            _perplex_tokenizer = AutoTokenizer.from_pretrained(PERPLEX_MODEL)
+            _perplex_tokenizer.pad_token = _perplex_tokenizer.eos_token
+            _perplex_model = GPT2LMHeadModel.from_pretrained(PERPLEX_MODEL)
+            _perplex_model.eval()
+        except Exception as e:
+            logger.error(f"Failed to load perplexity model: {e}")
     return _perplex_tokenizer, _perplex_model
 
-def calculate_perplexity(text: str, tokenizer, model) -> float:
-    """Fast perplexity approximation."""
-    encodings = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
-    seq_len = encodings.input_ids.size(1)
-    nlls = []
-    for begin_loc in range(0, seq_len, 256):
-        end_loc = min(begin_loc + 256, seq_len)
-        input_ids = encodings.input_ids[:, begin_loc:end_loc]
-        target_ids = input_ids.clone()
-        with torch.no_grad():
-            outputs = model(input_ids, labels=target_ids)
-            nlls.append(outputs.loss)
-    ppl = torch.exp(torch.stack(nlls).mean())
-    return ppl.item()
+def calculate_perplexity(text: str) -> float:
+    tokenizer, model = load_perplexity_model()
+    if not model or not tokenizer:
+        return 100.0
+
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+    with torch.no_grad():
+        outputs = model(**inputs, labels=inputs["input_ids"])
+    
+    loss = outputs.loss
+    return torch.exp(loss).item()
 
 def get_pipeline(model_name: str):
-    """Lazy load classifier."""
     if model_name not in _pipelines:
         try:
-            _pipelines[model_name] = pipeline("text-classification", model=model_name, device=0 if torch.cuda.is_available() else -1)
+            _pipelines[model_name] = pipeline(
+                "text-classification", 
+                model=model_name, 
+                device=0 if torch.cuda.is_available() else -1
+            )
         except Exception as e:
-            logger.warning(f"Failed {model_name}: {e}")
+            logger.warning(f"Failed to load {model_name}: {e}")
             return None
     return _pipelines[model_name]
 
 def detect_ai_assistance(text: str) -> Dict[str, Any]:
-    if len(text.strip()) < 100:
-        return {"label": "Human", "probability": 0, "explanation": "Text too short.", "model_type": "none"}
+    # 1. Minimum length check
+    if not text or len(text.strip()) < 100:
+        return {
+            "label": "Human Written",
+            "probability": 0.0,
+            "explanation": "Content is too short for reliable analysis.",
+            "model_type": "none"
+        }
 
-    # Chunk for long texts
-    chunks = [text[i:i+1024] for i in range(0, len(text), 768)]
-    ensemble_probs = []
+    # 2. Chunking
+    words = text.split()
+    chunks = []
+    if len(words) > 500:
+        chunks.append(" ".join(words[:400]))
+        chunks.append(" ".join(words[-400:]))
+    else:
+        chunks.append(text)
+
+    all_ai_probs = []
     
     for chunk in chunks:
-        chunk_probs = []
-        for i, model_name in enumerate(MODELS):
+        chunk_model_probs = []
+        for model_name in MODELS:
             pipe = get_pipeline(model_name)
-            if pipe is None:
-                continue
+            if not pipe: continue
+            
             try:
-                result = pipe(chunk)[0]
-                prob_ai = result['score'] if result['label'] == 'Real' or result['label'] == 'LABEL_0' else 1 - result['score']
-                chunk_probs.append(prob_ai * MODEL_WEIGHTS[i])
-            except Exception:
-                continue
-        
-        if chunk_probs:
-            ensemble_probs.append(sum(chunk_probs) / sum(MODEL_WEIGHTS[:len(chunk_probs)]))
-    
-    if not ensemble_probs:
-        return {"label": "Human", "probability": 0, "explanation": "Models unavailable."}
+                res = pipe(chunk)[0]
+                label = res['label']
+                score = res['score']
+                
+                # prob_ai should be probability of AI
+                if label in ['Fake', 'ChatGPT', 'LABEL_0' if 'openai' in model_name else 'LABEL_1']:
+                    # Note: roberta-base-openai-detector uses 0: Fake, 1: Real
+                    # Hello-SimpleAI uses 0: Human, 1: ChatGPT
+                    # So for openai: Fake is LABEL_0. For Hello-SimpleAI: ChatGPT is LABEL_1.
+                    ai_prob = score if label != 'Real' and label != 'Human' else 1 - score
+                else:
+                    ai_prob = 1 - score if label in ['Real', 'Human'] else score
+                
+                # Simplified robust mapping
+                if label == 'Fake' or label == 'ChatGPT':
+                    ai_prob = score
+                elif label == 'Real' or label == 'Human':
+                    ai_prob = 1 - score
+                
+                chunk_model_probs.append(ai_prob)
+                logger.info(f"Model {model_name} -> {label} ({score:.2f}) -> AI Prob: {ai_prob:.2f}")
+            except Exception as e:
+                logger.error(f"Inference error: {e}")
 
-    model_prob = max(ensemble_probs)
-    
-    # Perplexity boost
+        if chunk_model_probs:
+            all_ai_probs.append(sum(chunk_model_probs) / len(chunk_model_probs))
+
+    if not all_ai_probs:
+        return {
+            "label": "Human Written",
+            "probability": 5.0,
+            "explanation": "Analysis engines currently offline.",
+            "model_type": "fallback"
+        }
+
+    # Base probability
+    base_prob = max(all_ai_probs)
+
+    # 3. Perplexity Influence
     try:
-        tokenizer, model = load_perplexity_model()
-        ppl = calculate_perplexity(text[:2000], tokenizer, model)  # Truncate for speed
-        perplex_factor = max(0, 1 - (ppl / PERPLEX_THRESHOLD)) * PERPLEX_WEIGHT
-        final_prob = min(model_prob + perplex_factor, 0.99)
-    except Exception:
-        final_prob = model_prob
+        ppl = calculate_perplexity(chunks[0])
+        logger.info(f"Perplexity: {ppl:.2f}")
+        # AI often has PPL < 20. Human > 40.
+        if ppl < 15: # Very predictable
+            base_prob = min(base_prob + 0.2, 0.99)
+        elif ppl > 60: # High complexity
+            base_prob = max(base_prob - 0.2, 0.01)
+    except:
+        pass
+
+    final_pct = round(base_prob * 100, 2)
     
-    prob_pct = final_prob * 100
-    label = "AI" if prob_pct > 55 else "Human"  # Tuned threshold for F1
-    
-    if prob_pct > 80:
-        explanation = "High confidence AI detection (ensemble + perplexity)."
-    elif prob_pct > 60:
-        explanation = "Likely AI-assisted."
+    if final_pct > 70:
+        label = "AI Content Detected"
+        explanation = "The content shows high predictability and structural patterns characteristic of AI-generated text."
+    elif final_pct > 35:
+        label = "Likely AI-Assisted"
+        explanation = "Moderate patterns suggestive of AI paraphrasing or generation detected."
     else:
-        explanation = "Human-like characteristics."
-    
+        label = "Human Written"
+        explanation = "The text exhibits complex linguistic patterns typical of human authors."
+
     return {
         "label": label,
-        "probability": round(prob_pct, 2),
+        "probability": final_pct,
         "explanation": explanation,
-        "model_type": "improved-ensemble-perplexity"
+        "model_type": "ensemble_v3_perplexity"
     }
-
